@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2026 College Front Office NIT Bracket Challenge</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      --bg: #f3f4f6;
+      --card: #ffffff;
+      --line: #d1d5db;
+      --line-strong: #9ca3af;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #111827;
+      --accent-2: #1f2937;
+      --soft: #f9fafb;
+      --shadow: 0 8px 30px rgba(17, 24, 39, 0.08);
+      --radius: 18px;
+      --game-h: 84px;
+      --gap-y: 14px;
+    }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #eef2f7 0%, #f8fafc 100%);
+      color: var(--text);
+    }
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid #e5e7eb;
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    h1, h2, h3, h4, p { margin-top: 0; }
+    .muted { color: var(--muted); }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .button-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 1px solid #d1d5db;
+      background: white;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.18s ease;
+    }
+    button:hover { background: #f3f4f6; }
+    button.primary {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    button.primary:hover { background: var(--accent-2); }
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: inherit;
+      background: white;
+    }
+    textarea { min-height: 120px; resize: vertical; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .form-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .notice {
+      border: 1px solid #e4d89f;
+      background: #fff8d9;
+      color: #5d4b00;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-top: 14px;
+    }
+    .success {
+      border: 1px solid #b7dfbf;
+      background: #edf8ef;
+      color: #16592a;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      margin-top: 14px;
+    }
+    .champion-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .champion-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .champion-name {
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .bracket-stage {
+      display: grid;
+      grid-template-columns: 1fr 300px 1fr;
+      gap: 24px;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+    .side-shell {
+      display: grid;
+      gap: 20px;
+    }
+    .side-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+    .half-bracket {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 0.8fr;
+      gap: 18px;
+      position: relative;
+      min-height: 520px;
+      padding: 18px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+      border: 1px solid #e5e7eb;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .round-col {
+      position: relative;
+      z-index: 1;
+    }
+    .round-col .round-name {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 800;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .games-stack {
+      display: flex;
+      flex-direction: column;
+      gap: var(--gap-y);
+    }
+    .spacer-1 .game-wrap:nth-child(2n) { margin-bottom: 46px; }
+    .spacer-2 { padding-top: 98px; }
+    .game-wrap {
+      position: relative;
+      min-height: var(--game-h);
+    }
+    .game {
+      border: 1px solid #dbe1e8;
+      border-radius: 16px;
+      padding: 10px;
+      background: rgba(255,255,255,0.97);
+      min-height: var(--game-h);
+      box-shadow: 0 6px 20px rgba(17, 24, 39, 0.05);
+    }
+    .game-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+    .team-btn {
+      width: 100%;
+      display: block;
+      text-align: left;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background: white;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: 0.18s ease;
+    }
+    .team-btn:last-child { margin-bottom: 0; }
+    .team-btn:hover:not(:disabled) {
+      border-color: #6b7280;
+      background: #f9fafb;
+      transform: translateY(-1px);
+    }
+    .team-btn.selected {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+    .team-btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .connector-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .connector-line {
+      position: absolute;
+      background: var(--line-strong);
+      opacity: 0.7;
+      border-radius: 999px;
+    }
+
+    .center-finals {
+      display: grid;
+      gap: 20px;
+      align-self: center;
+      position: sticky;
+      top: 24px;
+    }
+    .finals-card {
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid #e5e7eb;
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+    .finals-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      font-weight: 800;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .final-game {
+      margin-bottom: 14px;
+    }
+    .final-game:last-child { margin-bottom: 0; }
+
+    .receipt-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .small {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 1250px) {
+      .bracket-stage {
+        grid-template-columns: 1fr;
+      }
+      .center-finals {
+        position: static;
+        order: -1;
+      }
+    }
+    @media (max-width: 900px) {
+      .half-bracket {
+        grid-template-columns: 1fr;
+        min-height: auto;
+      }
+      .spacer-1 .game-wrap:nth-child(2n) { margin-bottom: 0; }
+      .spacer-2 { padding-top: 0; }
+      .connector-layer { display: none; }
+      .form-grid, .form-grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div>
+          <h1>2026 College Front Office NIT Bracket Challenge</h1>
+          <p class="muted">Make your picks, save your entry, and submit your bracket.</p>
+        </div>
+        <div class="button-row">
+          <button id="resetBtn">Reset Bracket</button>
+          <button id="saveReceiptBtn">Download Receipt</button>
+          <button id="copyReceiptBtn">Copy Picks</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" id="entryCard">
+      <h2>Entry Info</h2>
+      <div class="form-grid">
+        <div class="field">
+          <label for="entrantName">Name</label>
+          <input id="entrantName" type="text" placeholder="Your name" />
+        </div>
+        <div class="field">
+          <label for="entrantEmail">Email</label>
+          <input id="entrantEmail" type="email" placeholder="you@example.com" />
+        </div>
+      </div>
+      <div class="field" style="margin-top:14px;">
+        <label for="entrantHandle">Substack handle or social handle (optional)</label>
+        <input id="entrantHandle" type="text" placeholder="@yourhandle" />
+      </div>
+      <div class="notice">
+        Each user’s bracket is saved separately on their own device, so your picks stay available if you come back later from the same browser.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="champion-box">
+        <div>
+          <div class="champion-label">Current Champion Pick</div>
+          <div class="champion-name" id="championName">No champion selected</div>
+        </div>
+        <div class="small" id="saveStatus">Autosaved locally</div>
+      </div>
+    </div>
+
+    <div class="bracket-stage">
+      <div class="side-shell">
+        <div>
+          <div class="side-title">Left Side</div>
+          <div id="leftBracket"></div>
+        </div>
+      </div>
+
+      <div class="center-finals">
+        <div class="finals-card">
+          <div class="finals-title">Final Four</div>
+          <div id="finals"></div>
+        </div>
+        <div class="finals-card">
+          <div class="champion-label">Champion</div>
+          <div class="champion-name" id="championNameCenter">No champion selected</div>
+        </div>
+      </div>
+
+      <div class="side-shell">
+        <div>
+          <div class="side-title">Right Side</div>
+          <div id="rightBracket"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Tiebreaker: Total 3-Pointers Made</h2>
+      <p class="muted">Pick the combined number of made threes in each round across the tournament.</p>
+      <div class="form-grid-3">
+        <div class="field">
+          <label for="tbFirstRound">First Round</label>
+          <input id="tbFirstRound" type="number" min="0" placeholder="e.g. 246" />
+        </div>
+        <div class="field">
+          <label for="tbSecondRound">Second Round</label>
+          <input id="tbSecondRound" type="number" min="0" placeholder="e.g. 128" />
+        </div>
+        <div class="field">
+          <label for="tbQuarterfinals">Quarterfinals</label>
+          <input id="tbQuarterfinals" type="number" min="0" placeholder="e.g. 61" />
+        </div>
+        <div class="field">
+          <label for="tbSemifinals">Semifinals</label>
+          <input id="tbSemifinals" type="number" min="0" placeholder="e.g. 24" />
+        </div>
+        <div class="field">
+          <label for="tbChampionship">Championship</label>
+          <input id="tbChampionship" type="number" min="0" placeholder="e.g. 11" />
+        </div>
+        <div class="field">
+          <label for="tbTotal">Whole Tournament Total</label>
+          <input id="tbTotal" type="number" min="0" placeholder="e.g. 470" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Submit Entry</h2>
+      <p class="muted">When you're done, submit your bracket and keep a copy of your receipt for your records.</p>
+      <div class="button-row">
+        <button class="primary" id="submitBtn">Submit Bracket</button>
+      </div>
+      <div id="submitMessage"></div>
+    </div>
+
+    <div class="card" id="receiptCard">
+      <h2>Submission Receipt</h2>
+      <textarea id="receiptText" readonly></textarea>
+      <div class="receipt-actions">
+        <button id="copyReceiptBtnBottom">Copy Receipt</button>
+        <button id="downloadReceiptBtnBottom">Download Receipt</button>
+      </div>
+      <p class="small">Keep a copy of your receipt for your records.</p>
+    </div>
+  </div>
+
+  <script>
+    const INITIAL_STATE = {
+      entrant: { name: "", email: "", handle: "" },
+      tiebreakers: {
+        firstRound: "",
+        secondRound: "",
+        quarterfinals: "",
+        semifinals: "",
+        championship: "",
+        total: ""
+      },
+      submittedAt: null,
+      leftTop: {
+        name: "Left Top",
+        round1: [
+          { id: "lt-1", teams: ["Auburn", "South Alabama"], winner: null },
+          { id: "lt-2", teams: ["Seattle U", "St. Thomas (MN)"], winner: null },
+          { id: "lt-3", teams: ["George Mason", "Liberty"], winner: null },
+          { id: "lt-4", teams: ["Nevada", "Murray St."], winner: null }
+        ],
+        round2: [
+          { id: "lt-r2-1", teams: [null, null], winner: null },
+          { id: "lt-r2-2", teams: [null, null], winner: null }
+        ],
+        round3: [{ id: "lt-r3-1", teams: [null, null], winner: null }]
+      },
+      leftBottom: {
+        name: "Left Bottom",
+        round1: [
+          { id: "lb-1", teams: ["Wake Forest", "Navy"], winner: null },
+          { id: "lb-2", teams: ["Illinois St.", "Kent St."], winner: null },
+          { id: "lb-3", teams: ["Yale", "UNCW"], winner: null },
+          { id: "lb-4", teams: ["Dayton", "Bradley"], winner: null }
+        ],
+        round2: [
+          { id: "lb-r2-1", teams: [null, null], winner: null },
+          { id: "lb-r2-2", teams: [null, null], winner: null }
+        ],
+        round3: [{ id: "lb-r3-1", teams: [null, null], winner: null }]
+      },
+      rightTop: {
+        name: "Right Top",
+        round1: [
+          { id: "rt-1", teams: ["New Mexico", "Sam Houston"], winner: null },
+          { id: "rt-2", teams: ["Utah Valley", "George Washington"], winner: null },
+          { id: "rt-3", teams: ["Colorado St.", "Saint Joseph's"], winner: null },
+          { id: "rt-4", teams: ["California", "UIC"], winner: null }
+        ],
+        round2: [
+          { id: "rt-r2-1", teams: [null, null], winner: null },
+          { id: "rt-r2-2", teams: [null, null], winner: null }
+        ],
+        round3: [{ id: "rt-r3-1", teams: [null, null], winner: null }]
+      },
+      rightBottom: {
+        name: "Right Bottom",
+        round1: [
+          { id: "rb-1", teams: ["Tulsa", "SFA"], winner: null },
+          { id: "rb-2", teams: ["UC Irvine", "UNLV"], winner: null },
+          { id: "rb-3", teams: ["Wichita St.", "Wyoming"], winner: null },
+          { id: "rb-4", teams: ["Oklahoma St.", "Davidson"], winner: null }
+        ],
+        round2: [
+          { id: "rb-r2-1", teams: [null, null], winner: null },
+          { id: "rb-r2-2", teams: [null, null], winner: null }
+        ],
+        round3: [{ id: "rb-r3-1", teams: [null, null], winner: null }]
+      },
+      semifinals: [
+        { id: "sf-1", teams: [null, null], winner: null },
+        { id: "sf-2", teams: [null, null], winner: null }
+      ],
+      championship: { id: "final", teams: [null, null], winner: null }
+    };
+
+    const STORAGE_KEY = "nitBracketChallenge2026";
+    let state = structuredClone(INITIAL_STATE);
+
+    function structuredReset() {
+      state = structuredClone(INITIAL_STATE);
+      persistState();
+      syncInputsFromState();
+      render();
+      setSubmitMessage("Bracket reset for this browser.", "success");
+    }
+
+    function rebuildSection(section) {
+      section.round2 = section.round2.map((game, i) => {
+        const teams = [section.round1[i * 2]?.winner || null, section.round1[i * 2 + 1]?.winner || null];
+        return { ...game, teams, winner: teams.includes(game.winner) ? game.winner : null };
+      });
+      section.round3 = section.round3.map((game) => {
+        const teams = [section.round2[0]?.winner || null, section.round2[1]?.winner || null];
+        return { ...game, teams, winner: teams.includes(game.winner) ? game.winner : null };
+      });
+    }
+
+    function rebuildFinals() {
+      state.semifinals[0].teams = [state.leftTop.round3[0].winner, state.leftBottom.round3[0].winner];
+      if (!state.semifinals[0].teams.includes(state.semifinals[0].winner)) state.semifinals[0].winner = null;
+      state.semifinals[1].teams = [state.rightTop.round3[0].winner, state.rightBottom.round3[0].winner];
+      if (!state.semifinals[1].teams.includes(state.semifinals[1].winner)) state.semifinals[1].winner = null;
+      state.championship.teams = [state.semifinals[0].winner, state.semifinals[1].winner];
+      if (!state.championship.teams.includes(state.championship.winner)) state.championship.winner = null;
+    }
+
+    function pickWinner(sectionKey, roundKey, gameIndex, team) {
+      state[sectionKey][roundKey][gameIndex].winner = team;
+      rebuildSection(state[sectionKey]);
+      rebuildFinals();
+      persistState();
+      render();
+    }
+
+    function pickSemifinal(index, team) {
+      state.semifinals[index].winner = team;
+      rebuildFinals();
+      persistState();
+      render();
+    }
+
+    function pickChampion(team) {
+      state.championship.winner = team;
+      persistState();
+      render();
+    }
+
+    function persistState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const status = document.getElementById("saveStatus");
+      if (status) status.textContent = `Autosaved locally • ${new Date().toLocaleTimeString()}`;
+      updateReceipt();
+    }
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+      try { state = JSON.parse(saved); } catch (e) { state = structuredClone(INITIAL_STATE); }
+    }
+
+    function setSubmitMessage(message, kind = "notice") {
+      const el = document.getElementById("submitMessage");
+      el.className = kind === "success" ? "success" : "notice";
+      el.textContent = message;
+    }
+
+    function clearSubmitMessage() {
+      const el = document.getElementById("submitMessage");
+      el.className = "";
+      el.textContent = "";
+    }
+
+    function createTeamButton(team, selected, onClick) {
+      const btn = document.createElement("button");
+      btn.className = "team-btn" + (selected ? " selected" : "");
+      btn.textContent = team || "TBD";
+      btn.disabled = !team;
+      if (team) btn.addEventListener("click", onClick);
+      return btn;
+    }
+
+    function createGame(title, game, onPick, className = "") {
+      const wrapper = document.createElement("div");
+      wrapper.className = `game-wrap ${className}`.trim();
+      const gameEl = document.createElement("div");
+      gameEl.className = "game";
+      const label = document.createElement("div");
+      label.className = "game-label";
+      label.textContent = title;
+      gameEl.appendChild(label);
+      gameEl.appendChild(createTeamButton(game.teams[0], game.winner === game.teams[0], () => onPick(game.teams[0])));
+      gameEl.appendChild(createTeamButton(game.teams[1], game.winner === game.teams[1], () => onPick(game.teams[1])));
+      wrapper.appendChild(gameEl);
+      return wrapper;
+    }
+
+    function addBracketConnectors(container, invert = false) {
+      if (window.innerWidth <= 900) return;
+      const layer = document.createElement("div");
+      layer.className = "connector-layer";
+      const x1 = invert ? 18 : 33;
+      const x2 = invert ? 48 : 62;
+      const x3 = invert ? 73 : 84;
+      const lines = [
+        [x1, 23, 8, 1], [x1, 40, 8, 1], [x1 + 8, 23, 1, 18],
+        [x1, 56, 8, 1], [x1, 73, 8, 1], [x1 + 8, 56, 1, 18],
+        [x2, 33, 10, 1], [x2, 64, 10, 1], [x2 + 10, 33, 1, 32],
+        [x2, 54, 8, 1], [x2, 86, 8, 1], [x2 + 8, 54, 1, 33],
+        [x3, 49, 9, 1], [x3, 80, 9, 1], [x3 + 9, 49, 1, 32]
+      ];
+      lines.forEach(([left, top, width, height]) => {
+        const line = document.createElement("div");
+        line.className = "connector-line";
+        line.style.left = left + "%";
+        line.style.top = top + "%";
+        line.style.width = width + "%";
+        line.style.height = height === 1 ? "2px" : height + "%";
+        if (height !== 1) line.style.width = "2px";
+        layer.appendChild(line);
+      });
+      container.appendChild(layer);
+    }
+
+    function renderHalfBracket(topKey, bottomKey, invert = false) {
+      const top = state[topKey];
+      const bottom = state[bottomKey];
+      const shell = document.createElement("div");
+      shell.className = "half-bracket";
+
+      const round1 = document.createElement("div");
+      round1.className = "round-col";
+      round1.innerHTML = '<div class="round-name">First Round</div>';
+      const round1Stack = document.createElement("div");
+      round1Stack.className = "games-stack";
+      top.round1.forEach((game, i) => round1Stack.appendChild(createGame(`${top.name} • Game ${i + 1}`, game, (team) => pickWinner(topKey, "round1", i, team))));
+      bottom.round1.forEach((game, i) => round1Stack.appendChild(createGame(`${bottom.name} • Game ${i + 1}`, game, (team) => pickWinner(bottomKey, "round1", i, team))));
+      round1.appendChild(round1Stack);
+
+      const round2 = document.createElement("div");
+      round2.className = "round-col";
+      round2.innerHTML = '<div class="round-name">Second Round</div>';
+      const round2Stack = document.createElement("div");
+      round2Stack.className = "games-stack spacer-1";
+      top.round2.forEach((game, i) => round2Stack.appendChild(createGame(`${top.name} • R2 ${i + 1}`, game, (team) => pickWinner(topKey, "round2", i, team))));
+      bottom.round2.forEach((game, i) => round2Stack.appendChild(createGame(`${bottom.name} • R2 ${i + 1}`, game, (team) => pickWinner(bottomKey, "round2", i, team))));
+      round2.appendChild(round2Stack);
+
+      const round3 = document.createElement("div");
+      round3.className = "round-col";
+      round3.innerHTML = '<div class="round-name">Quarterfinals</div>';
+      const round3Stack = document.createElement("div");
+      round3Stack.className = "games-stack spacer-2";
+      round3Stack.appendChild(createGame(`${top.name} Quarterfinal`, top.round3[0], (team) => pickWinner(topKey, "round3", 0, team)));
+      round3Stack.appendChild(createGame(`${bottom.name} Quarterfinal`, bottom.round3[0], (team) => pickWinner(bottomKey, "round3", 0, team)));
+      round3.appendChild(round3Stack);
+
+      if (invert) {
+        shell.appendChild(round3);
+        shell.appendChild(round2);
+        shell.appendChild(round1);
+      } else {
+        shell.appendChild(round1);
+        shell.appendChild(round2);
+        shell.appendChild(round3);
+      }
+      addBracketConnectors(shell, invert);
+      return shell;
+    }
+
+    function renderFinals() {
+      const finals = document.getElementById("finals");
+      finals.innerHTML = "";
+      finals.appendChild(createGame("Semifinal 1", state.semifinals[0], (team) => pickSemifinal(0, team), "final-game"));
+      finals.appendChild(createGame("Semifinal 2", state.semifinals[1], (team) => pickSemifinal(1, team), "final-game"));
+      finals.appendChild(createGame("Championship", state.championship, (team) => pickChampion(team), "final-game"));
+    }
+
+    function render() {
+      const leftBracket = document.getElementById("leftBracket");
+      const rightBracket = document.getElementById("rightBracket");
+      leftBracket.innerHTML = "";
+      rightBracket.innerHTML = "";
+      leftBracket.appendChild(renderHalfBracket("leftTop", "leftBottom", false));
+      rightBracket.appendChild(renderHalfBracket("rightTop", "rightBottom", true));
+      renderFinals();
+      const champ = state.championship.winner || "No champion selected";
+      document.getElementById("championName").textContent = champ;
+      document.getElementById("championNameCenter").textContent = champ;
+      updateReceipt();
+    }
+
+    function bindInput(id, path1, path2 = null) {
+      const input = document.getElementById(id);
+      input.addEventListener("input", (e) => {
+        if (path2) state[path1][path2] = e.target.value;
+        else state.entrant[path1] = e.target.value;
+        persistState();
+      });
+    }
+
+    function syncInputsFromState() {
+      document.getElementById("entrantName").value = state.entrant.name || "";
+      document.getElementById("entrantEmail").value = state.entrant.email || "";
+      document.getElementById("entrantHandle").value = state.entrant.handle || "";
+      document.getElementById("tbFirstRound").value = state.tiebreakers.firstRound || "";
+      document.getElementById("tbSecondRound").value = state.tiebreakers.secondRound || "";
+      document.getElementById("tbQuarterfinals").value = state.tiebreakers.quarterfinals || "";
+      document.getElementById("tbSemifinals").value = state.tiebreakers.semifinals || "";
+      document.getElementById("tbChampionship").value = state.tiebreakers.championship || "";
+      document.getElementById("tbTotal").value = state.tiebreakers.total || "";
+    }
+
+    function formatSectionReceipt(section) {
+      return [
+        `${section.name}`,
+        `  First Round Winners: ${section.round1.map(g => g.winner || "TBD").join(" | ")}`,
+        `  Second Round Winners: ${section.round2.map(g => g.winner || "TBD").join(" | ")}`,
+        `  Quarterfinal Winner: ${section.round3[0].winner || "TBD"}`
+      ].join("\n");
+    }
+
+    function getReceiptText() {
+      return [
+        "2026 NIT BRACKET CHALLENGE RECEIPT",
+        "",
+        `Name: ${state.entrant.name || "Not provided"}`,
+        `Email: ${state.entrant.email || "Not provided"}`,
+        `Handle: ${state.entrant.handle || "Not provided"}`,
+        `Submitted At: ${state.submittedAt || "Not submitted yet"}`,
+        "",
+        formatSectionReceipt(state.leftTop), "",
+        formatSectionReceipt(state.leftBottom), "",
+        formatSectionReceipt(state.rightTop), "",
+        formatSectionReceipt(state.rightBottom), "",
+        `Semifinal 1 Winner: ${state.semifinals[0].winner || "TBD"}`,
+        `Semifinal 2 Winner: ${state.semifinals[1].winner || "TBD"}`,
+        `Champion: ${state.championship.winner || "TBD"}`,
+        "",
+        "Tiebreakers — Total 3s Made",
+        `First Round: ${state.tiebreakers.firstRound || ""}`,
+        `Second Round: ${state.tiebreakers.secondRound || ""}`,
+        `Quarterfinals: ${state.tiebreakers.quarterfinals || ""}`,
+        `Semifinals: ${state.tiebreakers.semifinals || ""}`,
+        `Championship: ${state.tiebreakers.championship || ""}`,
+        `Whole Tournament Total: ${state.tiebreakers.total || ""}`
+      ].join("\n");
+    }
+
+    function updateReceipt() {
+      document.getElementById("receiptText").value = getReceiptText();
+    }
+
+    async function copyReceipt() {
+      const text = getReceiptText();
+      try {
+        await navigator.clipboard.writeText(text);
+        setSubmitMessage("Receipt copied to clipboard.", "success");
+      } catch (err) {
+        setSubmitMessage("Could not copy automatically. You can still copy from the receipt box below.");
+      }
+    }
+
+    function downloadReceipt() {
+      const text = getReceiptText();
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const safeName = (state.entrant.name || "nit_bracket_entry").replace(/[^a-z0-9]+/gi, "_").toLowerCase();
+      a.href = url;
+      a.download = `${safeName}_2026_nit_bracket.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function validateBeforeSubmit() {
+      if (!state.entrant.name.trim()) return "Please enter a name.";
+      if (!state.entrant.email.trim()) return "Please enter an email.";
+      if (!/^\S+@\S+\.\S+$/.test(state.entrant.email.trim())) return "Please enter a valid email.";
+      if (!state.championship.winner) return "Please pick a champion before submitting.";
+      if (!state.tiebreakers.total) return "Please enter the whole tournament 3-point tiebreaker total.";
+      return null;
+    }
+
+    function buildSubmissionPayload() {
+      return {
+        entrant: state.entrant,
+        submittedAt: state.submittedAt,
+        champion: state.championship.winner,
+        sections: {
+          leftTop: state.leftTop,
+          leftBottom: state.leftBottom,
+          rightTop: state.rightTop,
+          rightBottom: state.rightBottom
+        },
+        semifinals: state.semifinals,
+        championship: state.championship,
+        tiebreakers: state.tiebreakers,
+        receipt: getReceiptText()
+      };
+    }
+
+    async function fakeSubmitToBackend(payload) {
+      console.log("SUBMIT THIS PAYLOAD TO YOUR BACKEND:", payload);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return { ok: true, entryId: `nit-${Date.now()}` };
+    }
+
+    async function submitEntry() {
+      clearSubmitMessage();
+      const error = validateBeforeSubmit();
+      if (error) { setSubmitMessage(error); return; }
+      const btn = document.getElementById("submitBtn");
+      btn.disabled = true;
+      btn.textContent = "Submitting...";
+      try {
+        state.submittedAt = new Date().toISOString();
+        persistState();
+        const payload = buildSubmissionPayload();
+        const response = await fakeSubmitToBackend(payload);
+        if (!response.ok) throw new Error("Submit failed.");
+        persistState();
+        updateReceipt();
+        setSubmitMessage(`Bracket submitted. Entry ID: ${response.entryId}. Give users this receipt, or wire this to a real database and email service next.`, "success");
+      } catch (err) {
+        setSubmitMessage("Submission failed. Your picks are still saved locally in this browser.");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Submit Bracket";
+      }
+    }
+
+    document.getElementById("resetBtn").addEventListener("click", structuredReset);
+    document.getElementById("saveReceiptBtn").addEventListener("click", downloadReceipt);
+    document.getElementById("downloadReceiptBtnBottom").addEventListener("click", downloadReceipt);
+    document.getElementById("copyReceiptBtn").addEventListener("click", copyReceipt);
+    document.getElementById("copyReceiptBtnBottom").addEventListener("click", copyReceipt);
+    document.getElementById("submitBtn").addEventListener("click", submitEntry);
+
+    bindInput("entrantName", "name");
+    bindInput("entrantEmail", "email");
+    bindInput("entrantHandle", "handle");
+    bindInput("tbFirstRound", "tiebreakers", "firstRound");
+    bindInput("tbSecondRound", "tiebreakers", "secondRound");
+    bindInput("tbQuarterfinals", "tiebreakers", "quarterfinals");
+    bindInput("tbSemifinals", "tiebreakers", "semifinals");
+    bindInput("tbChampionship", "tiebreakers", "championship");
+    bindInput("tbTotal", "tiebreakers", "total");
+
+    window.addEventListener('resize', render);
+
+    loadState();
+    syncInputsFromState();
+    render();
+  </script>
+</body>
+</html>
