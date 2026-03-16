@@ -1,0 +1,20 @@
+{
+  "name": "nit-march-madness",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "dev:netlify": "netlify dev",
+    "build": "mkdir -p dist && cp index.html dist/index.html",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.3",
+    "netlify-cli": "^24.3.0",
+    "vite": "^5.4.10"
+  }
+}
