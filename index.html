@@ -200,6 +200,7 @@
     .game-wrap {
       position: relative;
       min-height: var(--game-h);
+      scroll-margin-top: 32px;
     }
     .game {
       border: 1px solid #dbe1e8;
@@ -259,6 +260,9 @@
       opacity: 0.7;
       border-radius: 999px;
     }
+    #finals {
+      position: relative;
+    }
 
     .center-finals {
       display: grid;
@@ -287,6 +291,9 @@
       margin-bottom: 14px;
     }
     .final-game:last-child { margin-bottom: 0; }
+    .center-finals .game-wrap {
+      z-index: 1;
+    }
 
     .receipt-actions {
       display: flex;
@@ -351,7 +358,7 @@
         </div>
       </div>
       <div class="field" style="margin-top:14px;">
-        <label for="entrantHandle">Substack handle or social handle (optional)</label>
+        <label for="entrantHandle">X (formerly Twitter) Handle</label>
         <input id="entrantHandle" type="text" placeholder="@yourhandle" />
       </div>
       <div class="notice">
@@ -398,32 +405,10 @@
 
     <div class="card">
       <h2>Tiebreaker: Total 3-Pointers Made</h2>
-      <p class="muted">Pick the combined number of made threes in each round across the tournament.</p>
-      <div class="form-grid-3">
-        <div class="field">
-          <label for="tbFirstRound">First Round</label>
-          <input id="tbFirstRound" type="number" min="0" placeholder="e.g. 246" />
-        </div>
-        <div class="field">
-          <label for="tbSecondRound">Second Round</label>
-          <input id="tbSecondRound" type="number" min="0" placeholder="e.g. 128" />
-        </div>
-        <div class="field">
-          <label for="tbQuarterfinals">Quarterfinals</label>
-          <input id="tbQuarterfinals" type="number" min="0" placeholder="e.g. 61" />
-        </div>
-        <div class="field">
-          <label for="tbSemifinals">Semifinals</label>
-          <input id="tbSemifinals" type="number" min="0" placeholder="e.g. 24" />
-        </div>
-        <div class="field">
-          <label for="tbChampionship">Championship</label>
-          <input id="tbChampionship" type="number" min="0" placeholder="e.g. 11" />
-        </div>
-        <div class="field">
-          <label for="tbTotal">Whole Tournament Total</label>
-          <input id="tbTotal" type="number" min="0" placeholder="e.g. 470" />
-        </div>
+      <p class="muted">Pick the combined number of made threes across the whole tournament.</p>
+      <div class="field">
+        <label for="tbTotal">Whole Tournament Total</label>
+        <input id="tbTotal" type="number" min="0" placeholder="e.g. 470" />
       </div>
     </div>
 
@@ -456,11 +441,6 @@
     const INITIAL_STATE = {
       entrant: { name: "", email: "", handle: "" },
       tiebreakers: {
-        firstRound: "",
-        secondRound: "",
-        quarterfinals: "",
-        semifinals: "",
-        championship: "",
         total: ""
       },
       submittedAt: null,
@@ -538,6 +518,7 @@
 
     const GAME_ROUND_MAP = createGameRoundMap(INITIAL_STATE);
     const PLACEHOLDER_RESULTS = createEmptyResultsObject(INITIAL_STATE);
+    const GAME_PROGRESS_ORDER = createGameProgressOrder(INITIAL_STATE);
 
     let state = structuredClone(INITIAL_STATE);
     let submissionInFlight = false;
@@ -560,6 +541,72 @@
         results[gameId] = null;
       });
       return results;
+    }
+
+    function createGameProgressOrder(template) {
+      const order = [];
+
+      ["leftTop", "leftBottom", "rightTop", "rightBottom"].forEach((sectionKey) => {
+        template[sectionKey].round1.forEach((game) => order.push(game.id));
+      });
+      ["leftTop", "leftBottom", "rightTop", "rightBottom"].forEach((sectionKey) => {
+        template[sectionKey].round2.forEach((game) => order.push(game.id));
+      });
+      ["leftTop", "leftBottom", "rightTop", "rightBottom"].forEach((sectionKey) => {
+        template[sectionKey].round3.forEach((game) => order.push(game.id));
+      });
+      template.semifinals.forEach((game) => order.push(game.id));
+      order.push(template.championship.id);
+
+      return order;
+    }
+
+    function findGameById(gameId) {
+      const sectionKeys = ["leftTop", "leftBottom", "rightTop", "rightBottom"];
+      const roundKeys = ["round1", "round2", "round3"];
+
+      for (const sectionKey of sectionKeys) {
+        for (const roundKey of roundKeys) {
+          const game = state[sectionKey][roundKey].find((item) => item.id === gameId);
+          if (game) return game;
+        }
+      }
+
+      const semifinalGame = state.semifinals.find((item) => item.id === gameId);
+      if (semifinalGame) return semifinalGame;
+
+      if (state.championship.id === gameId) return state.championship;
+
+      return null;
+    }
+
+    function isGameReadyForSelection(game) {
+      return !!(game && game.teams[0] && game.teams[1] && !game.winner);
+    }
+
+    function getNextPendingGameId(currentGameId) {
+      const startIndex = GAME_PROGRESS_ORDER.indexOf(currentGameId);
+      const orderedIds = startIndex >= 0
+        ? GAME_PROGRESS_ORDER.slice(startIndex + 1).concat(GAME_PROGRESS_ORDER.slice(0, startIndex + 1))
+        : GAME_PROGRESS_ORDER;
+
+      for (const gameId of orderedIds) {
+        const game = findGameById(gameId);
+        if (isGameReadyForSelection(game)) return gameId;
+      }
+
+      return null;
+    }
+
+    function scrollToNextPendingGame(currentGameId) {
+      const nextGameId = getNextPendingGameId(currentGameId);
+      if (!nextGameId) return;
+
+      requestAnimationFrame(() => {
+        const nextGameEl = document.querySelector(`[data-game-id="${nextGameId}"]`);
+        if (!nextGameEl) return;
+        nextGameEl.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      });
     }
 
     function flattenPicksByGameId(entry) {
@@ -668,25 +715,28 @@
       if (!state.championship.teams.includes(state.championship.winner)) state.championship.winner = null;
     }
 
-    function pickWinner(sectionKey, roundKey, gameIndex, team) {
+    function pickWinner(sectionKey, roundKey, gameIndex, team, currentGameId) {
       state[sectionKey][roundKey][gameIndex].winner = team;
       rebuildSection(state[sectionKey]);
       rebuildFinals();
       persistState();
       render();
+      scrollToNextPendingGame(currentGameId);
     }
 
-    function pickSemifinal(index, team) {
+    function pickSemifinal(index, team, currentGameId) {
       state.semifinals[index].winner = team;
       rebuildFinals();
       persistState();
       render();
+      scrollToNextPendingGame(currentGameId);
     }
 
-    function pickChampion(team) {
+    function pickChampion(team, currentGameId) {
       state.championship.winner = team;
       persistState();
       render();
+      scrollToNextPendingGame(currentGameId);
     }
 
     function persistState() {
@@ -726,43 +776,111 @@
     function createGame(title, game, onPick, className = "") {
       const wrapper = document.createElement("div");
       wrapper.className = `game-wrap ${className}`.trim();
+      wrapper.dataset.gameId = game.id;
       const gameEl = document.createElement("div");
       gameEl.className = "game";
       const label = document.createElement("div");
       label.className = "game-label";
       label.textContent = title;
       gameEl.appendChild(label);
-      gameEl.appendChild(createTeamButton(game.teams[0], game.winner === game.teams[0], () => onPick(game.teams[0])));
-      gameEl.appendChild(createTeamButton(game.teams[1], game.winner === game.teams[1], () => onPick(game.teams[1])));
+      gameEl.appendChild(createTeamButton(game.teams[0], game.winner === game.teams[0], () => onPick(game.teams[0], game.id)));
+      gameEl.appendChild(createTeamButton(game.teams[1], game.winner === game.teams[1], () => onPick(game.teams[1], game.id)));
       wrapper.appendChild(gameEl);
       return wrapper;
     }
 
-    function addBracketConnectors(container, invert = false) {
-      if (window.innerWidth <= 900) return;
+    function createConnectorLayer(container) {
+      const existing = container.querySelector(":scope > .connector-layer");
+      if (existing) existing.remove();
       const layer = document.createElement("div");
       layer.className = "connector-layer";
-      const x1 = invert ? 18 : 33;
-      const x2 = invert ? 48 : 62;
-      const x3 = invert ? 73 : 84;
-      const lines = [
-        [x1, 23, 8, 1], [x1, 40, 8, 1], [x1 + 8, 23, 1, 18],
-        [x1, 56, 8, 1], [x1, 73, 8, 1], [x1 + 8, 56, 1, 18],
-        [x2, 33, 10, 1], [x2, 64, 10, 1], [x2 + 10, 33, 1, 32],
-        [x2, 54, 8, 1], [x2, 86, 8, 1], [x2 + 8, 54, 1, 33],
-        [x3, 49, 9, 1], [x3, 80, 9, 1], [x3 + 9, 49, 1, 32]
-      ];
-      lines.forEach(([left, top, width, height]) => {
-        const line = document.createElement("div");
-        line.className = "connector-line";
-        line.style.left = left + "%";
-        line.style.top = top + "%";
-        line.style.width = width + "%";
-        line.style.height = height === 1 ? "2px" : height + "%";
-        if (height !== 1) line.style.width = "2px";
-        layer.appendChild(line);
-      });
       container.appendChild(layer);
+      return layer;
+    }
+
+    function getRelativeBox(container, element) {
+      const containerRect = container.getBoundingClientRect();
+      const rect = element.getBoundingClientRect();
+      return {
+        left: rect.left - containerRect.left,
+        right: rect.right - containerRect.left,
+        top: rect.top - containerRect.top,
+        bottom: rect.bottom - containerRect.top,
+        centerY: rect.top - containerRect.top + rect.height / 2
+      };
+    }
+
+    function appendConnectorLine(layer, left, top, width, height) {
+      const line = document.createElement("div");
+      line.className = "connector-line";
+      line.style.left = `${left}px`;
+      line.style.top = `${top}px`;
+      line.style.width = `${width}px`;
+      line.style.height = `${height}px`;
+      layer.appendChild(line);
+    }
+
+    function drawConnectorBetweenGames(container, layer, sourceAEl, sourceBEl, targetEl, invert = false) {
+      const sourceA = getRelativeBox(container, sourceAEl);
+      const sourceB = getRelativeBox(container, sourceBEl);
+      const target = getRelativeBox(container, targetEl);
+
+      const sourceX = invert ? sourceA.left : sourceA.right;
+      const targetX = invert ? target.right : target.left;
+      const elbowX = (sourceX + targetX) / 2;
+      const topY = Math.min(sourceA.centerY, sourceB.centerY);
+      const bottomY = Math.max(sourceA.centerY, sourceB.centerY);
+      const targetY = target.centerY;
+
+      appendConnectorLine(layer, Math.min(sourceX, elbowX), sourceA.centerY - 1, Math.abs(elbowX - sourceX), 2);
+      appendConnectorLine(layer, Math.min(sourceX, elbowX), sourceB.centerY - 1, Math.abs(elbowX - sourceX), 2);
+      appendConnectorLine(layer, elbowX - 1, topY, 2, Math.max(bottomY - topY, 2));
+      appendConnectorLine(layer, Math.min(elbowX, targetX), targetY - 1, Math.abs(targetX - elbowX), 2);
+    }
+
+    function drawHalfBracketConnectors(container, topKey, bottomKey, invert = false) {
+      if (!container || window.innerWidth <= 900) return;
+
+      const layer = createConnectorLayer(container);
+      const pairs = [
+        [state[topKey].round1[0].id, state[topKey].round1[1].id, state[topKey].round2[0].id],
+        [state[topKey].round1[2].id, state[topKey].round1[3].id, state[topKey].round2[1].id],
+        [state[bottomKey].round1[0].id, state[bottomKey].round1[1].id, state[bottomKey].round2[0].id],
+        [state[bottomKey].round1[2].id, state[bottomKey].round1[3].id, state[bottomKey].round2[1].id],
+        [state[topKey].round2[0].id, state[topKey].round2[1].id, state[topKey].round3[0].id],
+        [state[bottomKey].round2[0].id, state[bottomKey].round2[1].id, state[bottomKey].round3[0].id]
+      ];
+
+      pairs.forEach(([sourceAId, sourceBId, targetId]) => {
+        const sourceAEl = container.querySelector(`[data-game-id="${sourceAId}"] .game`);
+        const sourceBEl = container.querySelector(`[data-game-id="${sourceBId}"] .game`);
+        const targetEl = container.querySelector(`[data-game-id="${targetId}"] .game`);
+        if (!sourceAEl || !sourceBEl || !targetEl) return;
+        drawConnectorBetweenGames(container, layer, sourceAEl, sourceBEl, targetEl, invert);
+      });
+    }
+
+    function drawFinalsConnectors() {
+      const finals = document.getElementById("finals");
+      if (!finals || window.innerWidth <= 900) return;
+
+      const layer = createConnectorLayer(finals);
+      const semifinalOne = finals.querySelector('[data-game-id="sf-1"] .game');
+      const semifinalTwo = finals.querySelector('[data-game-id="sf-2"] .game');
+      const championship = finals.querySelector('[data-game-id="final"] .game');
+      if (!semifinalOne || !semifinalTwo || !championship) return;
+
+      const sem1 = getRelativeBox(finals, semifinalOne);
+      const sem2 = getRelativeBox(finals, semifinalTwo);
+      const finalBox = getRelativeBox(finals, championship);
+      const trunkX = Math.max(Math.min(sem1.left, sem2.left, finalBox.left) - 18, 8);
+      const topY = Math.min(sem1.centerY, sem2.centerY);
+      const bottomY = Math.max(sem1.centerY, sem2.centerY);
+
+      appendConnectorLine(layer, trunkX, sem1.centerY - 1, Math.max(sem1.left - trunkX, 2), 2);
+      appendConnectorLine(layer, trunkX, sem2.centerY - 1, Math.max(sem2.left - trunkX, 2), 2);
+      appendConnectorLine(layer, trunkX - 1, topY, 2, Math.max(bottomY - topY, 2));
+      appendConnectorLine(layer, trunkX, finalBox.centerY - 1, Math.max(finalBox.left - trunkX, 2), 2);
     }
 
     function renderHalfBracket(topKey, bottomKey, invert = false) {
@@ -776,8 +894,8 @@
       round1.innerHTML = '<div class="round-name">First Round</div>';
       const round1Stack = document.createElement("div");
       round1Stack.className = "games-stack";
-      top.round1.forEach((game, i) => round1Stack.appendChild(createGame(`${top.name} • Game ${i + 1}`, game, (team) => pickWinner(topKey, "round1", i, team))));
-      bottom.round1.forEach((game, i) => round1Stack.appendChild(createGame(`${bottom.name} • Game ${i + 1}`, game, (team) => pickWinner(bottomKey, "round1", i, team))));
+      top.round1.forEach((game, i) => round1Stack.appendChild(createGame(`${top.name} • Game ${i + 1}`, game, (team, gameId) => pickWinner(topKey, "round1", i, team, gameId))));
+      bottom.round1.forEach((game, i) => round1Stack.appendChild(createGame(`${bottom.name} • Game ${i + 1}`, game, (team, gameId) => pickWinner(bottomKey, "round1", i, team, gameId))));
       round1.appendChild(round1Stack);
 
       const round2 = document.createElement("div");
@@ -785,8 +903,8 @@
       round2.innerHTML = '<div class="round-name">Second Round</div>';
       const round2Stack = document.createElement("div");
       round2Stack.className = "games-stack spacer-1";
-      top.round2.forEach((game, i) => round2Stack.appendChild(createGame(`${top.name} • R2 ${i + 1}`, game, (team) => pickWinner(topKey, "round2", i, team))));
-      bottom.round2.forEach((game, i) => round2Stack.appendChild(createGame(`${bottom.name} • R2 ${i + 1}`, game, (team) => pickWinner(bottomKey, "round2", i, team))));
+      top.round2.forEach((game, i) => round2Stack.appendChild(createGame(`${top.name} • R2 ${i + 1}`, game, (team, gameId) => pickWinner(topKey, "round2", i, team, gameId))));
+      bottom.round2.forEach((game, i) => round2Stack.appendChild(createGame(`${bottom.name} • R2 ${i + 1}`, game, (team, gameId) => pickWinner(bottomKey, "round2", i, team, gameId))));
       round2.appendChild(round2Stack);
 
       const round3 = document.createElement("div");
@@ -794,8 +912,8 @@
       round3.innerHTML = '<div class="round-name">Quarterfinals</div>';
       const round3Stack = document.createElement("div");
       round3Stack.className = "games-stack spacer-2";
-      round3Stack.appendChild(createGame(`${top.name} Quarterfinal`, top.round3[0], (team) => pickWinner(topKey, "round3", 0, team)));
-      round3Stack.appendChild(createGame(`${bottom.name} Quarterfinal`, bottom.round3[0], (team) => pickWinner(bottomKey, "round3", 0, team)));
+      round3Stack.appendChild(createGame(`${top.name} Quarterfinal`, top.round3[0], (team, gameId) => pickWinner(topKey, "round3", 0, team, gameId)));
+      round3Stack.appendChild(createGame(`${bottom.name} Quarterfinal`, bottom.round3[0], (team, gameId) => pickWinner(bottomKey, "round3", 0, team, gameId)));
       round3.appendChild(round3Stack);
 
       if (invert) {
@@ -807,16 +925,15 @@
         shell.appendChild(round2);
         shell.appendChild(round3);
       }
-      addBracketConnectors(shell, invert);
       return shell;
     }
 
     function renderFinals() {
       const finals = document.getElementById("finals");
       finals.innerHTML = "";
-      finals.appendChild(createGame("Semifinal 1", state.semifinals[0], (team) => pickSemifinal(0, team), "final-game"));
-      finals.appendChild(createGame("Semifinal 2", state.semifinals[1], (team) => pickSemifinal(1, team), "final-game"));
-      finals.appendChild(createGame("Championship", state.championship, (team) => pickChampion(team), "final-game"));
+      finals.appendChild(createGame("Semifinal 1", state.semifinals[0], (team, gameId) => pickSemifinal(0, team, gameId), "final-game"));
+      finals.appendChild(createGame("Semifinal 2", state.semifinals[1], (team, gameId) => pickSemifinal(1, team, gameId), "final-game"));
+      finals.appendChild(createGame("Championship", state.championship, (team, gameId) => pickChampion(team, gameId), "final-game"));
     }
 
     function render() {
@@ -827,6 +944,9 @@
       leftBracket.appendChild(renderHalfBracket("leftTop", "leftBottom", false));
       rightBracket.appendChild(renderHalfBracket("rightTop", "rightBottom", true));
       renderFinals();
+      drawHalfBracketConnectors(leftBracket.querySelector(".half-bracket"), "leftTop", "leftBottom", false);
+      drawHalfBracketConnectors(rightBracket.querySelector(".half-bracket"), "rightTop", "rightBottom", true);
+      drawFinalsConnectors();
       const champ = state.championship.winner || "No champion selected";
       document.getElementById("championName").textContent = champ;
       document.getElementById("championNameCenter").textContent = champ;
@@ -846,11 +966,6 @@
       document.getElementById("entrantName").value = state.entrant.name || "";
       document.getElementById("entrantEmail").value = state.entrant.email || "";
       document.getElementById("entrantHandle").value = state.entrant.handle || "";
-      document.getElementById("tbFirstRound").value = state.tiebreakers.firstRound || "";
-      document.getElementById("tbSecondRound").value = state.tiebreakers.secondRound || "";
-      document.getElementById("tbQuarterfinals").value = state.tiebreakers.quarterfinals || "";
-      document.getElementById("tbSemifinals").value = state.tiebreakers.semifinals || "";
-      document.getElementById("tbChampionship").value = state.tiebreakers.championship || "";
       document.getElementById("tbTotal").value = state.tiebreakers.total || "";
     }
 
@@ -881,11 +996,6 @@
         `Champion: ${state.championship.winner || "TBD"}`,
         "",
         "Tiebreakers - Total 3s Made",
-        `First Round: ${state.tiebreakers.firstRound || ""}`,
-        `Second Round: ${state.tiebreakers.secondRound || ""}`,
-        `Quarterfinals: ${state.tiebreakers.quarterfinals || ""}`,
-        `Semifinals: ${state.tiebreakers.semifinals || ""}`,
-        `Championship: ${state.tiebreakers.championship || ""}`,
         `Whole Tournament Total: ${state.tiebreakers.total || ""}`
       ].join("\n");
     }
@@ -1090,11 +1200,6 @@
     bindInput("entrantName", "name");
     bindInput("entrantEmail", "email");
     bindInput("entrantHandle", "handle");
-    bindInput("tbFirstRound", "tiebreakers", "firstRound");
-    bindInput("tbSecondRound", "tiebreakers", "secondRound");
-    bindInput("tbQuarterfinals", "tiebreakers", "quarterfinals");
-    bindInput("tbSemifinals", "tiebreakers", "semifinals");
-    bindInput("tbChampionship", "tiebreakers", "championship");
     bindInput("tbTotal", "tiebreakers", "total");
 
     window.addEventListener("resize", render);
